@@ -9,6 +9,7 @@ import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
@@ -17,6 +18,7 @@ import android.util.Log;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 
 public class DataListener extends PhoneStateListener implements LocationListener, GpsStatus.Listener {
@@ -134,6 +136,26 @@ public class DataListener extends PhoneStateListener implements LocationListener
         signalList.addFirst(new SignalEntry(signalStrength));
         while (signalList.size() > signalListMaxLength) {
             signalList.removeLast();
+        }
+        // check if the cell tower report is available
+        List<NeighboringCellInfo> cellInfos = telephonyManager.getNeighboringCellInfo();
+        if (cellInfos != null && cellInfos.size() > 0) {
+            for (NeighboringCellInfo cellInfo : cellInfos) {
+                // signal is type specific, would have to check it
+                // see https://developer.android.com/reference/android/telephony/NeighboringCellInfo.html#getRssi%28%29
+                // see https://en.wikipedia.org/wiki/Mobile_phone_signal#ASU
+                switch (cellInfo.getNetworkType()) {
+                    case TelephonyManager.NETWORK_TYPE_UMTS:
+                    case TelephonyManager.NETWORK_TYPE_HSDPA:
+                    case TelephonyManager.NETWORK_TYPE_HSUPA:
+                    case TelephonyManager.NETWORK_TYPE_HSPA:
+                        android.util.Log.d("SS/CellInfo/UMTS", "Psc: " + cellInfo.getPsc() + ", Signal " + (cellInfo.getRssi() - 116) + "dbm");
+                        break;
+                    default:
+                        // Not sure what to do if it's not GSM *sigh*
+                        android.util.Log.d("SS/CellInfo/GSM", "Cid: " + cellInfo.getCid() + ", Lac: " + cellInfo.getLac() + ", Signal " + (-113 + 2*cellInfo.getRssi()) + "dbm");
+                }
+            }
         }
     }
 
